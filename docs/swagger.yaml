@@ -1,0 +1,116 @@
+basePath: /api
+definitions:
+  controllers.Response:
+    description: API的通用响应格式
+    properties:
+      data:
+        description: 响应数据
+      error:
+        description: 错误信息
+        type: string
+      message:
+        type: string
+      status:
+        type: integer
+    type: object
+  controllers.UserResponse:
+    description: 包含用户数据的响应
+    properties:
+      data:
+        allOf:
+        - $ref: '#/definitions/models.User'
+        description: 响应数据
+    type: object
+  models.User:
+    description: 用户信息结构体
+    properties:
+      email:
+        description: |-
+          邮箱
+          @Description 用户的邮箱地址，必须唯一
+        example: john@example.com
+        type: string
+      id:
+        description: 用户ID
+        example: 1
+        type: integer
+      password:
+        description: |-
+          密码
+          @Description 用户的登录密码，不能为空
+        example: password123
+        type: string
+      username:
+        description: |-
+          用户名
+          @Description 用户的登录名，必须唯一
+        example: johndoe
+        type: string
+    required:
+    - email
+    - password
+    - username
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: This is a hospital management system server.
+  title: Hospital API
+  version: "1.0"
+paths:
+  /users:
+    post:
+      consumes:
+      - application/json
+      description: 创建一个新的用户账号
+      parameters:
+      - description: 用户信息
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/models.User'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功创建用户
+          schema:
+            $ref: '#/definitions/controllers.UserResponse'
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/controllers.Response'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/controllers.Response'
+      summary: 创建新用户
+      tags:
+      - 用户管理
+  /users/{id}:
+    get:
+      consumes:
+      - application/json
+      description: 根据用户ID获取用户详细信息
+      parameters:
+      - description: 用户ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功获取用户信息
+          schema:
+            $ref: '#/definitions/controllers.UserResponse'
+        "404":
+          description: 用户不存在
+          schema:
+            $ref: '#/definitions/controllers.Response'
+      summary: 获取用户信息
+      tags:
+      - 用户管理
+swagger: "2.0"
