@@ -2,8 +2,11 @@ root = "."
 tmp_dir = "tmp"
 
 [build]
-# 构建前先执行 swag init
-pre_cmd = ["swag init"]
+# 修改构建命令，确保先执行 swag init
+cmd = "swag init && go build -o ./tmp/main.exe ."
+# 删除 pre_cmd，直接将 swag init 集成到 cmd 中
+bin = "tmp\\main.exe"
+full_bin = "tmp\\main.exe"
 # 只需要监听 .go 文件的更改
 include_ext = ["go"]
 # 忽略这些文件夹
@@ -12,12 +15,6 @@ exclude_dir = ["assets", "tmp", "vendor", "docs"]
 exclude_file = []
 # 主程序入口
 main = "main.go"
-# 构建命令
-cmd = "go build -o ./tmp/main.exe ."
-# 二进制文件路径（Windows 下需要加 .exe）
-bin = "tmp\\main.exe"
-# 自定义执行程序的命令（Windows 下需要加 .exe）
-full_bin = "tmp\\main.exe"
 # 延迟时间
 delay = 1000
 # 发生错误时停止运行

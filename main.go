@@ -2,7 +2,7 @@
  * @Author: jiangheng jh@pzds.com
  * @Date: 2025-02-06 13:49:51
  * @LastEditors: jiangheng jh@pzds.com
- * @LastEditTime: 2025-02-06 16:08:01
+ * @LastEditTime: 2025-02-13 17:01:58
  * @FilePath: \hospital\main.go
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -23,6 +23,10 @@ import (
 // @description This is a hospital management system server.
 // @host localhost:8080
 // @BasePath /api
+// @securityDefinitions.apikey Bearer
+// @in header
+// @name Authorization
+// @description Type "Bearer" followed by a space and JWT token.
 func main() {
 	// 添加启动时间日志
 	startTime := time.Now()

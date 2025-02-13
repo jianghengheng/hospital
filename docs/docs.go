@@ -15,8 +15,47 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/login": {
+            "post": {
+                "description": "用户登录接口",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "用户管理"
+                ],
+                "summary": "用户登录",
+                "parameters": [
+                    {
+                        "description": "登录信息",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/controllers.LoginRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/users": {
             "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
                 "description": "创建一个新的用户账号",
                 "consumes": [
                     "application/json"
@@ -52,6 +91,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/controllers.Response"
                         }
                     },
+                    "401": {
+                        "description": "未授权访问",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.Response"
+                        }
+                    },
                     "500": {
                         "description": "服务器内部错误",
                         "schema": {
@@ -63,6 +108,11 @@ const docTemplate = `{
         },
         "/users/{id}": {
             "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
                 "description": "根据用户ID获取用户详细信息",
                 "consumes": [
                     "application/json"
@@ -90,6 +140,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/controllers.UserResponse"
                         }
                     },
+                    "401": {
+                        "description": "未授权访问",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.Response"
+                        }
+                    },
                     "404": {
                         "description": "用户不存在",
                         "schema": {
@@ -101,6 +157,25 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "controllers.LoginRequest": {
+            "type": "object",
+            "required": [
+                "password",
+                "username"
+            ],
+            "properties": {
+                "password": {
+                    "description": "密码",
+                    "type": "string",
+                    "example": "123456"
+                },
+                "username": {
+                    "description": "用户名",
+                    "type": "string",
+                    "example": "johndoe"
+                }
+            }
+        },
         "controllers.Response": {
             "description": "API的通用响应格式",
             "type": "object",
@@ -140,6 +215,7 @@ const docTemplate = `{
             "required": [
                 "email",
                 "password",
+                "phone",
                 "username"
             ],
             "properties": {
@@ -148,15 +224,20 @@ const docTemplate = `{
                     "type": "string",
                     "example": "john@example.com"
                 },
-                "id": {
-                    "description": "用户ID",
-                    "type": "integer",
-                    "example": 1
+                "head_image": {
+                    "description": "头像\n@Description 用户的头像地址",
+                    "type": "string",
+                    "example": "https://example.com/head.jpg"
                 },
                 "password": {
                     "description": "密码\n@Description 用户的登录密码，不能为空",
                     "type": "string",
                     "example": "password123"
+                },
+                "phone": {
+                    "description": "手机号\n@Description 用户的手机号",
+                    "type": "string",
+                    "example": "13800138000"
                 },
                 "username": {
                     "description": "用户名\n@Description 用户的登录名，必须唯一",
@@ -164,6 +245,14 @@ const docTemplate = `{
                     "example": "johndoe"
                 }
             }
+        }
+    },
+    "securityDefinitions": {
+        "Bearer": {
+            "description": "Type \"Bearer\" followed by a space and JWT token.",
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header"
         }
     }
 }`

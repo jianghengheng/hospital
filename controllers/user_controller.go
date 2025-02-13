@@ -2,18 +2,23 @@
  * @Author: jiangheng jh@pzds.com
  * @Date: 2025-02-06 13:49:47
  * @LastEditors: jiangheng jh@pzds.com
- * @LastEditTime: 2025-02-06 17:05:37
+ * @LastEditTime: 2025-02-13 17:18:42
  * @FilePath: \hospital\controllers\user_controller.go
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
 package controllers
 
 import (
+	"context"
+	"fmt"
 	"hospital/models"
 	"hospital/utils"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
+	"golang.org/x/crypto/bcrypt"
 )
 
 // Response 通用响应结构
@@ -34,6 +39,12 @@ type UserResponse struct {
 	Data models.User `json:"data"`
 }
 
+// LoginRequest 定义登录请求的结构体
+type LoginRequest struct {
+	Username string `json:"username" binding:"required" example:"johndoe"` // 用户名
+	Password string `json:"password" binding:"required" example:"123456"`  // 密码
+}
+
 type UserController struct{}
 
 // Create godoc
@@ -42,9 +53,11 @@ type UserController struct{}
 // @Tags 用户管理
 // @Accept json
 // @Produce json
+// @Security Bearer
 // @Param user body models.User true "用户信息"
 // @Success 200 {object} UserResponse "成功创建用户"
 // @Failure 400 {object} Response "请求参数错误"
+// @Failure 401 {object} Response "未授权访问"
 // @Failure 500 {object} Response "服务器内部错误"
 // @Router /users [post]
 func (u *UserController) Create(c *gin.Context) {
@@ -53,6 +66,14 @@ func (u *UserController) Create(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, Response{Error: err.Error(), Status: http.StatusBadRequest, Message: "请求参数错误"})
 		return
 	}
+	fmt.Println(user)
+	// 获取到密码加密存储
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, Response{Error: err.Error(), Status: http.StatusInternalServerError, Message: "密码加密失败"})
+		return
+	}
+	user.Password = string(hashedPassword)
 
 	if err := utils.DB.Create(&user).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, Response{Error: err.Error(), Status: http.StatusInternalServerError, Message: "服务器内部错误"})
@@ -68,8 +89,10 @@ func (u *UserController) Create(c *gin.Context) {
 // @Tags 用户管理
 // @Accept json
 // @Produce json
+// @Security Bearer
 // @Param id path string true "用户ID"
 // @Success 200 {object} UserResponse "成功获取用户信息"
+// @Failure 401 {object} Response "未授权访问"
 // @Failure 404 {object} Response "用户不存在"
 // @Router /users/{id} [get]
 func (u *UserController) Get(c *gin.Context) {
@@ -82,4 +105,67 @@ func (u *UserController) Get(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, Response{Data: user})
+}
+
+// Login godoc
+// @Summary 用户登录
+// @Description 用户登录接口
+// @Tags 用户管理
+// @Accept json
+// @Produce json
+// @Param request body LoginRequest true "登录信息"
+// @Success 200 {object} Response
+// @Router /login [post]
+func (u *UserController) Login(c *gin.Context) {
+	var loginReq LoginRequest
+	if err := c.ShouldBindJSON(&loginReq); err != nil {
+		c.JSON(http.StatusBadRequest, Response{
+			Status:  http.StatusBadRequest,
+			Message: "参数错误",
+			Error:   err.Error(),
+		})
+		return
+	}
+
+	// 查询用户
+	var user models.User
+	if err := utils.DB.Where("username = ?", loginReq.Username).First(&user).Error; err != nil {
+		c.JSON(http.StatusUnauthorized, Response{
+			Status:  http.StatusUnauthorized,
+			Message: "此用户不存在",
+		})
+		return
+	}
+
+	// 验证密码
+	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(loginReq.Password)); err != nil {
+		c.JSON(http.StatusUnauthorized, Response{
+			Status:  http.StatusUnauthorized,
+			Message: "用户名或密码错误",
+		})
+		return
+	}
+
+	// 生成token
+	token := uuid.New().String()
+	ctx := context.Background()
+
+	// 将token存入Redis,设置24小时过期
+	if err := utils.Redis.Set(ctx, fmt.Sprintf("token:%s", token), user.ID, 24*time.Hour).Err(); err != nil {
+		c.JSON(http.StatusInternalServerError, Response{
+			Status:  http.StatusInternalServerError,
+			Message: "服务器内部错误",
+			Error:   err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, Response{
+		Status:  http.StatusOK,
+		Message: "登录成功",
+		Data: gin.H{
+			"token": token,
+			"user":  user,
+		},
+	})
 }

@@ -1,5 +1,19 @@
 basePath: /api
 definitions:
+  controllers.LoginRequest:
+    properties:
+      password:
+        description: 密码
+        example: "123456"
+        type: string
+      username:
+        description: 用户名
+        example: johndoe
+        type: string
+    required:
+    - password
+    - username
+    type: object
   controllers.Response:
     description: API的通用响应格式
     properties:
@@ -30,15 +44,23 @@ definitions:
           @Description 用户的邮箱地址，必须唯一
         example: john@example.com
         type: string
-      id:
-        description: 用户ID
-        example: 1
-        type: integer
+      head_image:
+        description: |-
+          头像
+          @Description 用户的头像地址
+        example: https://example.com/head.jpg
+        type: string
       password:
         description: |-
           密码
           @Description 用户的登录密码，不能为空
         example: password123
+        type: string
+      phone:
+        description: |-
+          手机号
+          @Description 用户的手机号
+        example: "13800138000"
         type: string
       username:
         description: |-
@@ -49,6 +71,7 @@ definitions:
     required:
     - email
     - password
+    - phone
     - username
     type: object
 host: localhost:8080
@@ -58,6 +81,28 @@ info:
   title: Hospital API
   version: "1.0"
 paths:
+  /login:
+    post:
+      consumes:
+      - application/json
+      description: 用户登录接口
+      parameters:
+      - description: 登录信息
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controllers.Response'
+      summary: 用户登录
+      tags:
+      - 用户管理
   /users:
     post:
       consumes:
@@ -81,10 +126,16 @@ paths:
           description: 请求参数错误
           schema:
             $ref: '#/definitions/controllers.Response'
+        "401":
+          description: 未授权访问
+          schema:
+            $ref: '#/definitions/controllers.Response'
         "500":
           description: 服务器内部错误
           schema:
             $ref: '#/definitions/controllers.Response'
+      security:
+      - Bearer: []
       summary: 创建新用户
       tags:
       - 用户管理
@@ -106,11 +157,23 @@ paths:
           description: 成功获取用户信息
           schema:
             $ref: '#/definitions/controllers.UserResponse'
+        "401":
+          description: 未授权访问
+          schema:
+            $ref: '#/definitions/controllers.Response'
         "404":
           description: 用户不存在
           schema:
             $ref: '#/definitions/controllers.Response'
+      security:
+      - Bearer: []
       summary: 获取用户信息
       tags:
       - 用户管理
+securityDefinitions:
+  Bearer:
+    description: Type "Bearer" followed by a space and JWT token.
+    in: header
+    name: Authorization
+    type: apiKey
 swagger: "2.0"
