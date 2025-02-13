@@ -2,7 +2,7 @@
  * @Author: jiangheng jh@pzds.com
  * @Date: 2025-02-06 13:49:47
  * @LastEditors: jiangheng jh@pzds.com
- * @LastEditTime: 2025-02-13 17:18:42
+ * @LastEditTime: 2025-02-13 17:48:35
  * @FilePath: \hospital\controllers\user_controller.go
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -14,10 +14,12 @@ import (
 	"hospital/models"
 	"hospital/utils"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/xuri/excelize/v2"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -168,4 +170,70 @@ func (u *UserController) Login(c *gin.Context) {
 			"user":  user,
 		},
 	})
+}
+
+// Export 导出用户数据为Excel
+// @Summary 导出用户数据为Excel
+// @Description 导出所有用户数据为Excel文件
+// @Tags 用户管理
+// @Accept json
+// @Produce application/octet-stream
+// @Security Bearer
+// @Success 200 {file} file "成功导出Excel文件"
+// @Failure 401 {object} Response "未授权访问"
+// @Failure 500 {object} Response "服务器内部错误"
+// @Router /export [get]
+func (u *UserController) Export(c *gin.Context) {
+	var users []models.User
+	if err := utils.DB.Find(&users).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, Response{Error: err.Error(), Status: http.StatusInternalServerError, Message: "服务器内部错误"})
+		return
+	}
+
+	f := excelize.NewFile()
+	// 创建一个工作表
+	index, err := f.NewSheet("Users")
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, Response{Error: err.Error(), Status: http.StatusInternalServerError, Message: "服务器内部错误"})
+		return
+	}
+
+	// 设置表头
+	headers := []string{"ID", "Username", "Email", "HeadImage", "Phone"}
+	for i, header := range headers {
+		cell, err := excelize.CoordinatesToCellName(1+i, 1)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, Response{Error: err.Error(), Status: http.StatusInternalServerError, Message: "服务器内部错误"})
+			return
+		}
+		f.SetCellValue("Users", cell, header)
+	}
+
+	// 填充数据
+	for i, user := range users {
+		row := i + 2 // 从第二行开始填充数据
+		f.SetCellValue("Users", fmt.Sprintf("A%d", row), user.ID)
+		f.SetCellValue("Users", fmt.Sprintf("B%d", row), user.Username)
+		f.SetCellValue("Users", fmt.Sprintf("C%d", row), user.Email)
+		f.SetCellValue("Users", fmt.Sprintf("D%d", row), user.HeadImage)
+		f.SetCellValue("Users", fmt.Sprintf("E%d", row), user.Phone)
+	}
+
+	// 设置默认工作表
+	f.SetActiveSheet(index)
+
+	// 写入文件
+	filename := "users.xlsx"
+	if err := f.SaveAs(filename); err != nil {
+		c.JSON(http.StatusInternalServerError, Response{Error: err.Error(), Status: http.StatusInternalServerError, Message: "服务器内部错误"})
+		return
+	}
+
+	// 发送文件给客户端
+	c.Header("Content-Type", "application/octet-stream")
+	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s", filename))
+	c.File(filename)
+
+	// 删除临时文件
+	os.Remove(filename)
 }
