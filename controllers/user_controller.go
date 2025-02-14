@@ -2,7 +2,7 @@
  * @Author: jiangheng jh@pzds.com
  * @Date: 2025-02-06 13:49:47
  * @LastEditors: jiangheng jh@pzds.com
- * @LastEditTime: 2025-02-13 17:48:35
+ * @LastEditTime: 2025-02-14 09:58:43
  * @FilePath: \hospital\controllers\user_controller.go
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"hospital/models"
 	"hospital/utils"
+	"hospital/utils/response"
 	"net/http"
 	"os"
 	"time"
@@ -65,24 +66,23 @@ type UserController struct{}
 func (u *UserController) Create(c *gin.Context) {
 	var user models.User
 	if err := c.ShouldBindJSON(&user); err != nil {
-		c.JSON(http.StatusBadRequest, Response{Error: err.Error(), Status: http.StatusBadRequest, Message: "请求参数错误"})
+		response.BadRequest(c, "请求参数错误", err.Error())
 		return
 	}
-	fmt.Println(user)
-	// 获取到密码加密存储
+
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, Response{Error: err.Error(), Status: http.StatusInternalServerError, Message: "密码加密失败"})
+		response.ServerError(c, "密码加密失败", err.Error())
 		return
 	}
 	user.Password = string(hashedPassword)
 
 	if err := utils.DB.Create(&user).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, Response{Error: err.Error(), Status: http.StatusInternalServerError, Message: "服务器内部错误"})
+		response.ServerError(c, "创建用户失败", err.Error())
 		return
 	}
 
-	c.JSON(http.StatusOK, Response{Data: user, Status: http.StatusOK, Message: "success"})
+	response.Success(c, user, "用户创建成功")
 }
 
 // Get godoc
@@ -102,11 +102,11 @@ func (u *UserController) Get(c *gin.Context) {
 	var user models.User
 
 	if err := utils.DB.Where("id = ?", id).First(&user).Error; err != nil {
-		c.JSON(http.StatusNotFound, Response{Error: "用户不存在"})
+		response.NotFound(c, "用户不存在", err.Error())
 		return
 	}
 
-	c.JSON(http.StatusOK, Response{Data: user})
+	response.Success(c, user, "获取用户成功")
 }
 
 // Login godoc
@@ -121,55 +121,33 @@ func (u *UserController) Get(c *gin.Context) {
 func (u *UserController) Login(c *gin.Context) {
 	var loginReq LoginRequest
 	if err := c.ShouldBindJSON(&loginReq); err != nil {
-		c.JSON(http.StatusBadRequest, Response{
-			Status:  http.StatusBadRequest,
-			Message: "参数错误",
-			Error:   err.Error(),
-		})
+		response.BadRequest(c, "参数错误", err.Error())
 		return
 	}
 
-	// 查询用户
 	var user models.User
 	if err := utils.DB.Where("username = ?", loginReq.Username).First(&user).Error; err != nil {
-		c.JSON(http.StatusUnauthorized, Response{
-			Status:  http.StatusUnauthorized,
-			Message: "此用户不存在",
-		})
+		response.Unauthorized(c, "用户名或密码错误", "")
 		return
 	}
 
-	// 验证密码
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(loginReq.Password)); err != nil {
-		c.JSON(http.StatusUnauthorized, Response{
-			Status:  http.StatusUnauthorized,
-			Message: "用户名或密码错误",
-		})
+		response.Unauthorized(c, "用户名或密码错误", "")
 		return
 	}
 
-	// 生成token
 	token := uuid.New().String()
 	ctx := context.Background()
 
-	// 将token存入Redis,设置24小时过期
 	if err := utils.Redis.Set(ctx, fmt.Sprintf("token:%s", token), user.ID, 24*time.Hour).Err(); err != nil {
-		c.JSON(http.StatusInternalServerError, Response{
-			Status:  http.StatusInternalServerError,
-			Message: "服务器内部错误",
-			Error:   err.Error(),
-		})
+		response.ServerError(c, "登录失败", err.Error())
 		return
 	}
 
-	c.JSON(http.StatusOK, Response{
-		Status:  http.StatusOK,
-		Message: "登录成功",
-		Data: gin.H{
-			"token": token,
-			"user":  user,
-		},
-	})
+	response.Success(c, gin.H{
+		"token": token,
+		"user":  user,
+	}, "登录成功")
 }
 
 // Export 导出用户数据为Excel
