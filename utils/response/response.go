@@ -1,7 +1,14 @@
+/*
+ * @Author: jiangheng jh@pzds.com
+ * @Date: 2025-02-14 09:58:21
+ * @LastEditors: jiangheng jh@pzds.com
+ * @LastEditTime: 2025-02-14 10:10:29
+ * @FilePath: \hospital\utils\response\response.go
+ * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
+ */
 package response
 
 import (
-	"hospital/models"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -16,13 +23,6 @@ type Response struct {
 	Status  int         `json:"status,omitempty"`
 	// 错误信息
 	Error string `json:"error,omitempty"`
-}
-
-// UserResponse 用户响应结构
-// @Description 包含用户数据的响应
-type UserResponse struct {
-	// 响应数据
-	Data models.User `json:"data"`
 }
 
 // Success 成功响应

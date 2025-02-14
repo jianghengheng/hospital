@@ -2,7 +2,7 @@
  * @Author: jiangheng jh@pzds.com
  * @Date: 2025-02-06 13:49:47
  * @LastEditors: jiangheng jh@pzds.com
- * @LastEditTime: 2025-02-14 09:58:43
+ * @LastEditTime: 2025-02-14 13:36:18
  * @FilePath: \hospital\controllers\user_controller.go
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -16,6 +16,7 @@ import (
 	"hospital/utils/response"
 	"net/http"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -107,6 +108,12 @@ func (u *UserController) Get(c *gin.Context) {
 	}
 
 	response.Success(c, user, "获取用户成功")
+}
+func a() {
+
+	var mutex sync.Mutex
+	counter := 0
+	workers := 5
 }
 
 // Login godoc
